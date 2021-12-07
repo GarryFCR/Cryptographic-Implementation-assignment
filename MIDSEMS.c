@@ -4,12 +4,17 @@
 #include <string.h>
 #include <math.h>
 
+//(a) convertC2I(char ∗ A): converts a multi-precision integer in base 2^8 to a multi-precision integer in
+//base 2^26 .
+// s is the reference to the base 2^8 representation coefficients
+// coef is the reference to the base 2^26 representation coefficients that will be written by the function
 void convertC2I(char *s, int *coef)
 {
     int arr[128];
     int digit = 0, count = 0, pos, index = 0;
     int no_of_bits = 0;
 
+    //converting to binary
     for (int i = 0; i < 16; i++)
     {
         unsigned char val = (unsigned char)s[i];
@@ -22,6 +27,7 @@ void convertC2I(char *s, int *coef)
         }
     }
     index = 0;
+    //clubbing 26 bit at a time for a digit
     for (int k = 0; k < 5; k++)
     {
         int loop = 26;
@@ -41,11 +47,13 @@ void convertC2I(char *s, int *coef)
         digit = 0;
     }
 }
+//generating random 127 bit number
 void rand127(char *A, char *B)
 {
 
     int temp;
 
+    // first generating the random 128 bits
     for (int i = 0; i < 16; i++)
     {
         temp = rand() % 256;
@@ -55,11 +63,13 @@ void rand127(char *A, char *B)
         B[i] = temp;
     }
 
+    //right shifting the MSB so that it is 7 bits
+    //overall becomes 127 bits
     A[15] = 128 ^ (A[15] >> 1);
     B[15] = 128 ^ (B[15] >> 1);
 }
 
-//addition
+//addition of two 2^8 base number i.e A and B and result is a 2^26 base number stored in X
 void Add(int *X, int *A, int *B)
 {
 
@@ -111,7 +121,7 @@ int main()
     printf("Random 127 bits in 8 bit format\n");
     for (int i = 0; i < 16; i++)
     {
-        printf("A :%d\tB:%d\n", A[i], B[i]);
+        printf("A :%d\tB:%d\n", (unsigned char)A[i], (unsigned char)B[i]);
     }
 
     //(b) Convert A and B in base 2 26 using the function convertC2I.
