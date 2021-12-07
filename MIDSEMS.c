@@ -110,7 +110,40 @@ void Add(int *X, int *A, int *B)
 
     convertC2I(s, X);
 }
+void convertI2C(int *s, int *coef)
+{
+    int arr[128];
+    int digit = 0, count = 0, pos, index = 0;
+    int no_of_bits = 0;
 
+    //converting to binary
+    for (int i = 0; i < 5; i++)
+    {
+        int val = s[i];
+        for (int j = 0; j < 26; j++)
+        {
+            arr[index] = 1 & val;
+            index++;
+            val = val >> 1;
+        }
+    }
+    index = 0;
+    //clubbing 8 bit at a time for a digit
+    for (int k = 0; k < 16; k++)
+    {
+
+        for (int j = 0; j < 8; j++)
+        {
+
+            pos = (int)pow((double)2, (double)j);
+            digit = digit + (pos * arr[index]);
+            index++;
+        }
+        coef[k] = digit;
+        printf("%d\t", digit);
+        digit = 0;
+    }
+}
 int main()
 {
     srand(time(NULL));
@@ -145,6 +178,12 @@ int main()
     }
     printf("\n\nAddition of A and B and result is in base 2^26\n");
     Add(result1, x, y);
+
+    //(e) Convert the outputs of add and mult into a base 2 8 multi-precision integer using the function
+    //convertI2C.
+    int resultC[5];
+    printf("\n\nConverting addition of A and B to base 2^8 \n");
+    convertI2C(result1, resultC);
 
     free(A);
     free(B);
