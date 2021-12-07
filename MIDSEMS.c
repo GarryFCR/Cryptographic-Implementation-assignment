@@ -4,115 +4,45 @@
 #include <string.h>
 #include <math.h>
 
-//(a) convertC2I(char ∗ A): converts a multi-precision integer in base 2^8 to a multi-precision integer in
-//base 2^26 .
-// s is the reference to the base 2^8 representation coefficients
-// coef is the reference to the base 2^26 representation coefficients that will be written by the function
-void convertC2I(char *s, int *coef)
-{
-    int arr[128];
-    int digit = 0, count = 0, pos, index = 0;
-    int no_of_bits = 0;
+// A and B are 127 bit numbers
+#define CHAR_NUM_LEN 16 // 8x16 = 128 bits
+#define INT_NUM_LEN 5 // 26x5 = 130 bits
 
-    //converting to binary
-    for (int i = 0; i < 16; i++)
-    {
-        unsigned char val = (unsigned char)s[i];
-        for (int j = 0; j < 8; j++)
-        {
-            arr[index] = 1 & val;
-            //printf("%d", arr[index]);
-            index++;
-            val = val >> 1;
-        }
-    }
-    index = 0;
-    //clubbing 26 bit at a time for a digit
-    for (int k = 0; k < 5; k++)
-    {
-        int loop = 26;
-        if (k == 4)
-        {
-            loop = 24;
-        }
-        for (int j = 0; j < loop; j++)
-        {
+// generates char* little endian
+unsigned char *rand127();
 
-            pos = (int)pow((double)2, (double)j);
-            digit = digit + (pos * arr[index]);
-            index++;
-        }
-        coef[k] = digit;
-        printf("\n%d", digit);
-        digit = 0;
-    }
-}
-//generating random 127 bit number
-void rand127(char *A, char *B)
-{
+// prints char* as big endian
+void printCharNum(char label[], unsigned char *val);
 
-    int temp;
+// print int* as big endian
+void printInts(int *limbs, unsigned int number);
 
-    // first generating the random 128 bits
-    for (int i = 0; i < 16; i++)
-    {
-        temp = rand() % 256;
-        A[i] = temp;
+// prints char* as big endian in binary (useful for debugging)
+void printCharNumBinary(char label[], unsigned char *val);
 
-        temp = rand() % 256;
-        B[i] = temp;
-    }
+// prints int* as big endian in binary (useful for debugging)
+void printIntsBinary(char label[], int *val);
 
-    //right shifting the MSB so that it is 7 bits
-    //overall becomes 127 bits
-    A[15] = 128 ^ (A[15] >> 1);
-    B[15] = 128 ^ (B[15] >> 1);
-}
+// converts char* to int*
+int *convertC2I(unsigned char *val);
 
 //addition of two 2^8 base number i.e A and B and result is a 2^26 base number stored in X
-void Add(int *X, int *A, int *B)
-{
+void add(int *X, int *A, int *B);
 
-    int a, b, r, i = 0, j = 0, k = 0;
-    int sum = 0;
-    int C[17];
-    C[16] = 0;
+// MAIN FUNCTION
 
-    for (i = 0; i < 16; i++)
-    {
-        C[i] = A[i] + B[i];
-    }
-    for (j = 0; j < 16; j++)
-    {
+int main() {
+    unsigned char *charA = rand127();
+    unsigned char *charB = rand127();
 
-        if (C[j] > 255)
-        {
-            a = C[j] / 256;
-            b = C[j] % 256;
+    printCharNumBinary("A", charA);
+    // printCharNumBinary("B", charB);
 
-            C[j] = b;
-            if (j != 15)
-            {
-                C[j + 1] = C[j + 1] + a;
-            }
-            else
-            {
-                C[j + 1] = a;
-            }
-        }
-    }
+    int *intA = convertC2I(charA);
+    printIntsBinary("A", intA);
 
-    char s[17];
-    for (int i = 0; i < 17; i++)
-    {
-        s[i] = C[i];
-    }
 
-    convertC2I(s, X);
-}
-
-int main()
-{
+    //
     srand(time(NULL));
     //(a) generate A and B randomly as a string of characters.
     char *A = malloc(16);
@@ -150,4 +80,144 @@ int main()
     free(B);
 
     return 0;
+}
+
+// FUNCTION IMPLEMENTATION STARTS HERE
+
+unsigned char *rand127() {
+    unsigned char *val = malloc(CHAR_NUM_LEN sizeof(unsigned char));
+    for (int i = 0; i < 16; i++) {
+        if(i < 15) {
+            val[i] = rand() % 256;
+        } else {
+            val[i] = rand() % 128;
+        }
+        // val[i] = 255;
+    }
+    return val;
+}
+
+int *convertC2I(unsigned char *val) {
+    int *result = malloc(INT_NUM_LEN * sizeof(int));
+
+    int bitPosition = 0;
+    for (int i = 0; i < CHAR_NUM_LEN; i++) {
+        if((bitPosition % 26) <= 18) { // 26 - 8
+            result[bitPosition / 26] |= (val[i] << (bitPosition % 26));
+        } else {
+            int valAnd = (1 << (27 - (bitPosition % 26))) - 1;
+            result[bitPosition / 26] += (val[i] & valAnd) << (bitPosition % 26);
+            result[bitPosition / 26 + 1] += val[i] >> (26 - (bitPosition % 26));   
+        }
+            // printIntsBinary("X", result);
+        bitPosition += 8;
+    }
+
+    return result;
+}
+
+void add(int *X, int *A, int *B) {
+    int a, b, r, i = 0, j = 0, k = 0;
+    int sum = 0;
+    int C[17];
+    C[16] = 0;
+
+    for (i = 0; i < 16; i++) {
+        C[i] = A[i] + B[i];
+    }
+    for (j = 0; j < 16; j++) {
+        if (C[j] > 255) {
+            a = C[j] / 256;
+            b = C[j] % 256;
+
+            C[j] = b;
+            if (j != 15) {
+                C[j + 1] = C[j + 1] + a;
+            } else {
+                C[j + 1] = a;
+            }
+        }
+    }
+
+    char s[17];
+    for (int i = 0; i < 17; i++) {
+        s[i] = C[i];
+    }
+
+    convertC2I(s, X);
+}
+
+// PRINTING FUNCTIONS BELOW
+
+void printCharNum(char label[], unsigned char *val) {
+    printf("Printing charNum %s: ", label);
+    // little endian
+    for (int i = CHAR_NUM_LEN - 1; i >= 0; i--) {
+        printf("%d ", val[i]);
+    }
+    printf("\n");
+}
+
+void printInts(int *limbs, unsigned int number) {
+    for (int i = number - 1; i >= 0; i--) {
+        printf("%d ", limbs[i]);
+    }
+    printf("\n");
+}
+
+void printCharNumBinary(char label[], unsigned char *val) {
+    printf("Printing charNum %s:  ", label);
+    // little endian
+    for (int i = CHAR_NUM_LEN - 1; i >= 0; i--) {
+        printf(
+            "%d%d%d%d%d%d%d%d", 
+            val[i] >> 7 & 1,
+            val[i] >> 6 & 1,
+            val[i] >> 5 & 1,
+            val[i] >> 4 & 1,
+            val[i] >> 3 & 1,
+            val[i] >> 2 & 1,
+            val[i] >> 1 & 1,
+            val[i] & 1
+        );
+    }
+    printf("\n");
+}
+
+// prints char* as big endian in binary
+void printIntsBinary(char label[], int *val) {
+    printf("Printing intNum %s: ", label);
+    // little endian
+    for (int i = INT_NUM_LEN - 1; i >= 0; i--) {
+        printf(
+            "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d", 
+            val[i] >> 25 & 1,
+            val[i] >> 24 & 1,
+            val[i] >> 23 & 1,
+            val[i] >> 22 & 1,
+            val[i] >> 21 & 1,
+            val[i] >> 20 & 1,
+            val[i] >> 19 & 1,
+            val[i] >> 18 & 1,
+            val[i] >> 17 & 1,
+            val[i] >> 16 & 1,
+            val[i] >> 15 & 1,
+            val[i] >> 14 & 1,
+            val[i] >> 13 & 1,
+            val[i] >> 12 & 1,
+            val[i] >> 11 & 1,
+            val[i] >> 10 & 1,
+            val[i] >> 9 & 1,
+            val[i] >> 8 & 1,
+            val[i] >> 7 & 1,
+            val[i] >> 6 & 1,
+            val[i] >> 5 & 1,
+            val[i] >> 4 & 1,
+            val[i] >> 3 & 1,
+            val[i] >> 2 & 1,
+            val[i] >> 1 & 1,
+            val[i] & 1
+        );
+    }
+    printf("\n");
 }
