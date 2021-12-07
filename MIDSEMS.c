@@ -13,6 +13,7 @@ unsigned char *rand127();
 
 // converts char* to int*
 int *convertC2I(unsigned char *val);
+unsigned char *convertI2C(int *val);
 
 //addition of two 2^8 base number i.e A and B and result is a 2^26 base number stored in X
 int *add(int *A, int *B);
@@ -36,21 +37,24 @@ int main() {
     int *intA = convertC2I(charA);
     int *intB = convertC2I(charB);
 
-    printCharNum("A", charA);
-    printInts("A", intA);
-    printCharNum("B", charB);
-    printInts("B", intB);
+    // printCharNum("A", charA);
+    // printInts("A", intA);
+    // printCharNum("B", charB);
+    // printInts("B", intB);
     // uncomment to see A and B in binary
-    // printCharNumBinary("A ", charA);
-    // printIntsBinary("A", intA);
+    printCharNumBinary("A ", charA);
+    printIntsBinary("A", intA);
+
+    unsigned char *charA2 = convertI2C(intA);
+    printCharNumBinary("A ", charA2);
     // printCharNumBinary("B ", charB);
     // printIntsBinary("B", intB);
 
-    int *intAPlusB = add(intA, intB);
-    printInts("A+B", intAPlusB);
+    // int *intAPlusB = add(intA, intB);
+    // printInts("A+B", intAPlusB);
 
-    int *intAMulB = mult(intA, intB);
-    printInts("AxB", intAMulB);
+    // int *intAMulB = mult(intA, intB);
+    // printInts("AxB", intAMulB);
 
 
     //
@@ -98,12 +102,12 @@ int main() {
 unsigned char *rand127() {
     unsigned char *val = malloc(CHAR_NUM_LEN * sizeof(unsigned char));
     for (int i = 0; i < 16; i++) {
-        // if(i < 15) {
-        //     val[i] = rand() % 256;
-        // } else {
-        //     val[i] = rand() % 128;
-        // }
-        val[i] = 255;
+        if(i < 15) {
+            val[i] = rand() % 256;
+        } else {
+            val[i] = rand() % 128;
+        }
+        // val[i] = 255;
     }
     return val;
 }
@@ -119,6 +123,23 @@ int *convertC2I(unsigned char *val) {
             int valAnd = (1 << (27 - (bitPosition % 26))) - 1;
             result[bitPosition / 26] += (val[i] & valAnd) << (bitPosition % 26);
             result[bitPosition / 26 + 1] += val[i] >> (26 - (bitPosition % 26));   
+        }
+        bitPosition += 8;
+    }
+
+    return result;
+}
+
+unsigned char *convertI2C(int *val) {
+    unsigned char *result = malloc(CHAR_NUM_LEN * sizeof(unsigned char));
+
+    int bitPosition = 0;
+    for (int i = 0; i < CHAR_NUM_LEN; i++) {
+        if((bitPosition % 26) <= 18) { // 26 - 8
+            result[i] = (val[bitPosition / 26] >> (bitPosition % 26)) & 255;
+        } else {
+            int valAnd = (1 << (27 - (bitPosition % 26))) - 1;
+            result[i] = ((val[bitPosition / 26] >> (bitPosition % 26)) & valAnd) | ((val[bitPosition / 26 + 1] << (26 - (bitPosition % 26))) & 255);
         }
         bitPosition += 8;
     }
