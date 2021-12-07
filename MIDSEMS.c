@@ -12,8 +12,8 @@
 unsigned char *rand127();
 
 // converts char* to int*
-int *convertC2I(unsigned char *val);
-unsigned char *convertI2C(int *val);
+int *convertC2I(unsigned char *val, unsigned int charLength);
+unsigned char *convertI2C(int *val, unsigned int charLength);
 
 //addition of two 2^8 base number i.e A and B and result is a 2^26 base number stored in X
 int *add(int *A, int *B);
@@ -21,10 +21,10 @@ int *add(int *A, int *B);
 int *mult(int *A, int *B);
 
 // methods for printing numbers
-void printCharNum(char label[], unsigned char *val);
-void printCharNumBinary(char label[], unsigned char *val);
-void printInts(char label[], int *limbs);
-void printIntsBinary(char label[], int *val);
+void printCharNum(char label[], unsigned char *val, unsigned int len);
+void printCharNumBinary(char label[], unsigned char *val, unsigned int len);
+void printInts(char label[], int *limbs, unsigned int len);
+void printIntsBinary(char label[], int *val, unsigned int len);
 
 
 
@@ -34,66 +34,40 @@ int main() {
     unsigned char *charA = rand127();
     unsigned char *charB = rand127();
 
-    int *intA = convertC2I(charA);
-    int *intB = convertC2I(charB);
+    int *intA = convertC2I(charA, CHAR_NUM_LEN);
+    int *intB = convertC2I(charB, CHAR_NUM_LEN);
 
-    // printCharNum("A", charA);
-    // printInts("A", intA);
-    // printCharNum("B", charB);
-    // printInts("B", intB);
-    // uncomment to see A and B in binary
-    printCharNumBinary("A ", charA);
-    printIntsBinary("A", intA);
+    // uncomment to see A and B for debugging
 
-    unsigned char *charA2 = convertI2C(intA);
-    printCharNumBinary("A ", charA2);
-    // printCharNumBinary("B ", charB);
-    // printIntsBinary("B", intB);
+    // printCharNum("A", charA, CHAR_NUM_LEN);
+    // printInts("A", intA, INT_NUM_LEN);
+    // printCharNum("B", charB, CHAR_NUM_LEN);
+    // printInts("B", intB, INT_NUM_LEN);
 
-    // int *intAPlusB = add(intA, intB);
-    // printInts("A+B", intAPlusB);
+    // printCharNumBinary("A ", charA, CHAR_NUM_LEN);
+    // printIntsBinary("A", intA, INT_NUM_LEN);
+    // printCharNumBinary("B ", charB, CHAR_NUM_LEN);
+    // printIntsBinary("B", intB, INT_NUM_LEN);
 
-    // int *intAMulB = mult(intA, intB);
-    // printInts("AxB", intAMulB);
+    int *intC = add(intA, intB);
+    // printInts("A+B", intC, INT_NUM_LEN * 2);
+    int *intD = mult(intA, intB);
+    // printInts("AxB", intD, INT_NUM_LEN * 2);
+
+    unsigned char *charC = convertI2C(intC, CHAR_NUM_LEN);
+    printCharNum("A+B", charC, CHAR_NUM_LEN);
+    unsigned char *charD = convertI2C(intD, CHAR_NUM_LEN * 2);
+    printCharNum("AxB", charD, CHAR_NUM_LEN * 2);
 
 
-    //
-    // srand(time(NULL));
-    // //(a) generate A and B randomly as a string of characters.
-    // char *A = malloc(16);
-    // char *B = malloc(16);
-    // rand127(A, B);
-    // printf("Random 127 bits in 8 bit format\n");
-    // for (int i = 0; i < 16; i++)
-    // {
-    //     printf("A :%d\tB:%d\n", (unsigned char)A[i], (unsigned char)B[i]);
-    // }
-
-    // //(b) Convert A and B in base 2 26 using the function convertC2I.
-    // int resultA[5];
-    // int resultB[5];
-    // printf("Base 2^26 representation of A and B\n");
-    // printf("A:");
-    // convertC2I(A, resultA);
-    // printf("\n\nB:");
-    // convertC2I(B, resultB);
-
-    // //(c) Call function add to compute the addition.
-    // int result1[5];
-    // int x[16], y[16];
-    // for (int i = 0; i < 16; i++)
-    // {
-    //     unsigned char temp = (unsigned char)A[i];
-    //     x[i] = (int)temp;
-    //     temp = (unsigned char)B[i];
-    //     y[i] = (int)temp;
-    // }
-    // printf("\n\nAddition of A and B and result is in base 2^26\n");
-    // Add(result1, x, y);
-
-    // free(A);
-    // free(B);
-
+    free(charA);
+    free(charB);
+    free(charC);
+    free(charD);
+    free(intA);
+    free(intB);
+    free(intC);
+    free(intD);
     return 0;
 }
 
@@ -107,22 +81,25 @@ unsigned char *rand127() {
         } else {
             val[i] = rand() % 128;
         }
-        // val[i] = 255;
+        // val[i] = 1; // for debug
     }
     return val;
 }
 
-int *convertC2I(unsigned char *val) {
-    int *result = malloc(INT_NUM_LEN * sizeof(int));
+int *convertC2I(unsigned char *val, unsigned int charLength) {
+    int *result = malloc(INT_NUM_LEN * 2 * sizeof(int));
 
     int bitPosition = 0;
-    for (int i = 0; i < CHAR_NUM_LEN; i++) {
+    if(charLength == 0) charLength = CHAR_NUM_LEN;
+    for (int i = 0; i < charLength; i++) {
         if((bitPosition % 26) <= 18) { // 26 - 8
+            // the char is completely inside one 2**26 limb
             result[bitPosition / 26] |= (val[i] << (bitPosition % 26));
         } else {
-            int valAnd = (1 << (27 - (bitPosition % 26))) - 1;
-            result[bitPosition / 26] += (val[i] & valAnd) << (bitPosition % 26);
-            result[bitPosition / 26 + 1] += val[i] >> (26 - (bitPosition % 26));   
+            // the char is partially inside one 2**26 limb
+            int valAnd = (1 << (26 - (bitPosition % 26))) - 1;
+            result[bitPosition / 26] |= (val[i] & valAnd) << (bitPosition % 26);
+            result[bitPosition / 26 + 1] |= val[i] >> (26 - (bitPosition % 26));   
         }
         bitPosition += 8;
     }
@@ -130,15 +107,18 @@ int *convertC2I(unsigned char *val) {
     return result;
 }
 
-unsigned char *convertI2C(int *val) {
-    unsigned char *result = malloc(CHAR_NUM_LEN * sizeof(unsigned char));
+unsigned char *convertI2C(int *val, unsigned int charLength) {
+    unsigned char *result = malloc(CHAR_NUM_LEN * 2 * sizeof(unsigned char));
 
     int bitPosition = 0;
-    for (int i = 0; i < CHAR_NUM_LEN; i++) {
+    if(charLength == 0) charLength = CHAR_NUM_LEN;
+    for (int i = 0; i < charLength; i++) {
         if((bitPosition % 26) <= 18) { // 26 - 8
+            // the char is completely inside one 2**26 limb
             result[i] = (val[bitPosition / 26] >> (bitPosition % 26)) & 255;
         } else {
-            int valAnd = (1 << (27 - (bitPosition % 26))) - 1;
+            // the char is partially inside one 2**26 limb
+            int valAnd = (1 << (26 - (bitPosition % 26))) - 1;
             result[i] = ((val[bitPosition / 26] >> (bitPosition % 26)) & valAnd) | ((val[bitPosition / 26 + 1] << (26 - (bitPosition % 26))) & 255);
         }
         bitPosition += 8;
@@ -175,7 +155,7 @@ int *add(int *A, int *B) {
         s[i] = C[i];
     }
 
-    return convertC2I(s);
+    return convertC2I(s, CHAR_NUM_LEN);
 }
 
 // adds value to a int*, carries if overflow
@@ -198,9 +178,9 @@ void addVal(int *ptr, int val) {
 // Karatsuba (https://brilliant.org/wiki/karatsuba-algorithm/)
 void multiplyKaratsubaStep(int x, int y, int *result) {
     // splitting x and y into two halves
-    int xH = x >> 13; 
+    int xH = (x >> 13) & 0x1fff; 
     int xL = x & 0x1fff;
-    int yH = y >> 13;
+    int yH = (y >> 13) & 0x1fff;
     int yL = y & 0x1fff;
 
     // xy = a*(b**n) + e*(b**n/2) + d
@@ -209,13 +189,9 @@ void multiplyKaratsubaStep(int x, int y, int *result) {
     int e = xH * yL + xL * yH; // (xH + xL) * (yH + yL) - a - d;
 
     // writing the result to pointer
-    printf("1");
     addVal(result + 1, a); // result[1] = result[1] + a;
-    printf("2");
     addVal(result + 1, e >> 13); // result[1] = result[1] + e >> 13;
-    printf("3");
     addVal(result, (e & 0x1fff) << 13); // result[0] = result[0] + (e & 0x3ffffff) << 13;
-    printf("4");
     addVal(result, d); // result[0] = result[0] + d;
 }
 
@@ -233,31 +209,34 @@ int *mult(int *x, int *y) {
 // PRINTING FUNCTIONS BELOW
 
 // print int* as big endian
-void printCharNum(char label[], unsigned char *val) {
+void printCharNum(char label[], unsigned char *val, unsigned int length) {
+    if(length == 0) length = CHAR_NUM_LEN;
     printf("charNum %s ", label);
     // little endian
-    for (int i = CHAR_NUM_LEN - 1; i >= 0; i--) {
+    for (int i = length - 1; i >= 0; i--) {
         printf("%d ", val[i]);
     }
     printf("\n");
 }
 
 // print int* as big endian
-void printInts(char label[], int *limbs) {
+void printInts(char label[], int *limbs, unsigned int length) {
+    if(length == 0) length = INT_NUM_LEN;
     printf("intNum %s ", label);
-    for (int i = INT_NUM_LEN - 1; i >= 0; i--) {
+    for (int i = length - 1; i >= 0; i--) {
         printf("%d ", limbs[i] % (1 << 26));
     }
     printf("\n");
 }
 
 // prints char* as big endian in binary (useful for debugging)
-void printCharNumBinary(char label[], unsigned char *val) {
+void printCharNumBinary(char label[], unsigned char *val, unsigned int length) {
+    if(length == 0) length = CHAR_NUM_LEN;
     printf("charNum %s ", label);
     // little endian
-    for (int i = CHAR_NUM_LEN - 1; i >= 0; i--) {
+    for (int i = length - 1; i >= 0; i--) {
         printf(
-            "%d%d%d%d%d%d%d%d ", 
+            "%d%d%d%d%d%d%d%d", 
             val[i] >> 7 & 1,
             val[i] >> 6 & 1,
             val[i] >> 5 & 1,
@@ -272,12 +251,15 @@ void printCharNumBinary(char label[], unsigned char *val) {
 }
 
 // prints char* as big endian in binary
-void printIntsBinary(char label[], int *val) {
+void printIntsBinary(char label[], int *val, unsigned int length) {
+    if(length == 0) length = INT_NUM_LEN;
     printf("intNum %s ", label);
     // little endian
-    for (int i = INT_NUM_LEN - 1; i >= 0; i--) {
+    for (int i = length - 1; i >= 0; i--) {
         printf(
-            "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d ", 
+            "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d", 
+            // val[i] >> 27 & 1,
+            // val[i] >> 26 & 1,
             val[i] >> 25 & 1,
             val[i] >> 24 & 1,
             val[i] >> 23 & 1,
