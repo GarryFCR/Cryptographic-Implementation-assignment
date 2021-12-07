@@ -12,6 +12,7 @@ int *allocateInts(unsigned int number) {
 int *scanInts(unsigned int number) {
     printf("Scanning MultiPrecision int of length %d\n", number);
     int *limbs = allocateInts(number);
+    // lowest index is least significant / little endian
     for (int i = number - 1; i >= 0; i--) {
         printf("Enter limb %d: ", number - i);
 
@@ -32,6 +33,7 @@ void printInts(int *limbs, unsigned int number) {
     printf("\n");
 }
 
+// add value to a pointer, carry if overflow
 void addVal(int *ptr, int val) {
     if(val >= 1 << 26) {
         printf("addVal: %d is too large\n", val);
@@ -39,8 +41,10 @@ void addVal(int *ptr, int val) {
     }
 
     if((ptr[0] + val) < (1 << 26)) {
+        // if not overflow, simply add
         ptr[0] = ptr[0] + val;
     } else {
+        // handle overflow
         ptr[0] = (ptr[0] + val) % (1 << 26);
         ptr[1] += 1; // add a carry
     }
@@ -60,25 +64,17 @@ void multiplyKaratsubaStep(int x, int y, int *result) {
     int e = xH * yL + xL * yH; // (xH + xL) * (yH + yL) - a - d;
 
     // writing the result to pointer
-    // result[1] += a;
-    // result[1] += e >> 13;
-    // result[0] += (e & 0x3ffffff) << 13;
-    // result[0] += d;
-
-    addVal(result + 1, a);
-
-    addVal(result + 1, e >> 13);
-
-    addVal(result, (e & 0x1fff) << 13);
-
-    addVal(result, d);
+    addVal(result + 1, a); // result[1] = result[1] + a;
+    addVal(result + 1, e >> 13); // result[1] = result[1] + e >> 13;
+    addVal(result, (e & 0x1fff) << 13); // result[0] = result[0] + (e & 0x3ffffff) << 13;
+    addVal(result, d); // result[0] = result[0] + d;
 }
 
 int *multiply(int *x, unsigned int xLen, int *y, unsigned int yLen, unsigned int resultLen) {
     int *result = allocateInts(xLen + yLen);
     for (int i = 0; i < xLen; i++) {
         for (int j = 0; j < yLen; j++) {
-            // result[i+j] += x[i] * y[j];
+            // apply Karatsuba to all the pairs of limbs
             multiplyKaratsubaStep(x[i], y[j], result + (i + j));
         }
     }
